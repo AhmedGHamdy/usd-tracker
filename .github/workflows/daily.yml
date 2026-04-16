@@ -33,14 +33,20 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python daily_summary.py
 
-      - name: Commit updated history
+      - name: Commit updated history (rebase-safe, retries on race)
         run: |
           git config user.name  "usd-egp-bot"
           git config user.email "bot@users.noreply.github.com"
-          if [[ -n "$(git status --porcelain history.json)" ]]; then
-            git add history.json
-            git commit -m "history: daily snapshot $(date -u +%F)"
-            git push
-          else
+          if [[ -z "$(git status --porcelain history.json)" ]]; then
             echo "No history change."
+            exit 0
           fi
+          git add history.json
+          git commit -m "history: daily snapshot $(date -u +%F)"
+          for i in 1 2 3 4 5; do
+            git pull --rebase --autostash origin main && git push && exit 0
+            echo "Push attempt $i failed — retrying after 3s..."
+            sleep 3
+          done
+          echo "Gave up after 5 push attempts."
+          exit 1

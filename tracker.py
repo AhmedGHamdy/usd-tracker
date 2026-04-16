@@ -84,25 +84,11 @@ GOOGLE_CHART_URL = "https://www.google.com/finance/quote/USD-EGP"
 
 
 def build_alert_message(changes: list[tuple]) -> str:
-    """Minimal alert — only the sources that actually changed.
-    Format per source:
-        *CIB*
-        Old: 51.83 → New: 51.95
-        🔺 +0.12 EGP (+0.23%)
+    """Ultra-minimal alert — just the new price, one line per changed source.
+    If a single source changed → a single number like: 51.82
+    If multiple changed → one number per line.
     """
-    ts = now_cairo()
-    lines = [f"💱 *USD/EGP Alert* · _{fmt_time(ts)} (Cairo)_", ""]
-
-    for name, prev_p, curr_p in changes:
-        delta = curr_p - prev_p
-        pct = (delta / prev_p * 100) if prev_p else 0.0
-        lines.append(f"*{name}*")
-        lines.append(f"Old: `{prev_p:.4f}` → New: `{curr_p:.4f}`")
-        lines.append(f"{arrow(delta)} `{delta:+.4f}` EGP (`{pct:+.2f}%`)")
-        lines.append("")
-
-    lines.append(f"📈 [View chart on Google Finance]({GOOGLE_CHART_URL})")
-    return "\n".join(lines)
+    return "\n".join(f"{curr_p:.2f}" for _, _, curr_p in changes)
 
 
 def build_activation_message(results: list[dict]) -> str:

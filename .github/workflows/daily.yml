@@ -1,0 +1,46 @@
+name: USD-EGP Daily Summary
+
+on:
+  schedule:
+    # 8:00 AM Cairo = 6:00 AM UTC (morning briefing)
+    - cron: "0 6 * * *"
+    # 8:00 PM Cairo = 6:00 PM UTC (end-of-day wrap-up)
+    - cron: "0 18 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  summary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Send daily summary
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python daily_summary.py
+
+      - name: Commit updated history
+        run: |
+          git config user.name  "usd-egp-bot"
+          git config user.email "bot@users.noreply.github.com"
+          if [[ -n "$(git status --porcelain history.json)" ]]; then
+            git add history.json
+            git commit -m "history: daily snapshot $(date -u +%F)"
+            git push
+          else
+            echo "No history change."
+          fi

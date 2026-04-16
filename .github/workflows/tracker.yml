@@ -1,0 +1,50 @@
+name: USD-EGP Tracker
+
+on:
+  schedule:
+    # Every 15 minutes. Note: GitHub cron can be delayed up to ~15 min
+    # during peak load — effective cadence may be 15–30 min.
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: usd-egp-tracker
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Run tracker
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          MIN_CHANGE: ${{ vars.MIN_CHANGE || '0.05' }}
+        run: python tracker.py
+
+      - name: Commit updated state
+        run: |
+          git config user.name  "usd-egp-bot"
+          git config user.email "bot@users.noreply.github.com"
+          if [[ -n "$(git status --porcelain state.json)" ]]; then
+            git add state.json
+            git commit -m "state: update $(date -u +%FT%TZ)"
+            git push
+          else
+            echo "No state change."
+          fi

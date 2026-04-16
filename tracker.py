@@ -78,64 +78,51 @@ def arrow(delta: float) -> str:
     return "➖"
 
 
-def fmt_delta(delta: float, base: float | None) -> str:
-    if base and base > 0:
-        pct = (delta / base) * 100
-        return f"{arrow(delta)} {delta:+.4f} ({pct:+.2f}%)"
-    return f"{arrow(delta)} {delta:+.4f}"
-
-
 # ---------- Message building ----------
 
-def build_message(results: list[dict], prev: dict, changes: list[tuple]) -> str:
+GOOGLE_CHART_URL = "https://www.google.com/finance/quote/USD-EGP"
+
+
+def build_alert_message(changes: list[tuple]) -> str:
+    """Minimal alert — only the sources that actually changed.
+    Format per source:
+        *CIB*
+        Old: 51.83 → New: 51.95
+        🔺 +0.12 EGP (+0.23%)
+    """
     ts = now_cairo()
-    lines = [f"💱 *USD / EGP Update*", f"_{fmt_date_time(ts)} (Cairo)_", ""]
+    lines = [f"💱 *USD/EGP Alert* · _{fmt_time(ts)} (Cairo)_", ""]
 
-    # Per-source block
-    for r in results:
-        name = r["source"]
-        if r["error"]:
-            lines.append(f"• *{name}*: ⚠️ unavailable")
-            continue
-
-        buy, sell, mid = r["buy"], r["sell"], r["mid"]
-        line = f"• *{name}*: "
-        if buy is not None and sell is not None:
-            line += f"Buy `{buy:.4f}` / Sell `{sell:.4f}`"
-        elif mid is not None:
-            line += f"`{mid:.4f}`"
-        else:
-            line += "—"
-
-        # Append change vs previous
-        prev_price = prev.get(name, {}).get("price")
-        curr_price = pick_primary(r)
-        if prev_price is not None and curr_price is not None:
-            delta = curr_price - prev_price
-            if abs(delta) >= 0.0001:
-                line += f"  {fmt_delta(delta, prev_price)}"
-        lines.append(line)
-
-    # Spread (CBE vs Yahoo market)
-    by_src = {r["source"]: r for r in results if not r["error"]}
-    official = by_src.get("CBE (official)")
-    market = by_src.get("Yahoo (market)")
-    if official and market:
-        off_mid = pick_primary(official)
-        mkt_mid = pick_primary(market)
-        if off_mid and mkt_mid:
-            spread = mkt_mid - off_mid
-            lines.append("")
-            lines.append(f"📊 *Spread (Market − Official)*: `{spread:+.4f}` EGP")
-
-    # Summary of changes
-    if changes:
+    for name, prev_p, curr_p in changes:
+        delta = curr_p - prev_p
+        pct = (delta / prev_p * 100) if prev_p else 0.0
+        lines.append(f"*{name}*")
+        lines.append(f"Old: `{prev_p:.4f}` → New: `{curr_p:.4f}`")
+        lines.append(f"{arrow(delta)} `{delta:+.4f}` EGP (`{pct:+.2f}%`)")
         lines.append("")
-        lines.append("*Changed since last check:*")
-        for name, prev_p, curr_p in changes:
-            d = curr_p - prev_p
-            lines.append(f"  _{name}_: `{prev_p:.4f}` → `{curr_p:.4f}`  {fmt_delta(d, prev_p)}")
 
+    lines.append(f"📈 [View chart on Google Finance]({GOOGLE_CHART_URL})")
+    return "\n".join(lines)
+
+
+def build_activation_message(results: list[dict]) -> str:
+    """First-run confirmation — sent once so you know the bot is live."""
+    ts = now_cairo()
+    lines = [
+        "✅ *Tracker is active*",
+        f"_Monitoring USD/EGP every 15 min · {fmt_date_time(ts)} (Cairo)_",
+        "",
+        "You'll get a short alert whenever any of these prices changes:",
+    ]
+    for r in results:
+        if r["error"]:
+            lines.append(f"• _{r['source']}_ ⚠️")
+            continue
+        p = pick_primary(r)
+        if p is not None:
+            lines.append(f"• _{r['source']}_: `{p:.4f}`")
+    lines.append("")
+    lines.append(f"📈 [View chart on Google Finance]({GOOGLE_CHART_URL})")
     return "\n".join(lines)
 
 
@@ -206,13 +193,12 @@ def main() -> int:
         if abs(curr_price - prev_price) >= MIN_CHANGE:
             changes.append((name, prev_price, curr_price))
 
-    # Compose and send only if something changed
+    # Compose and send
     first_run = not prev_rates
-    if changes or first_run:
-        msg = build_message(results, prev_rates, changes)
-        if first_run:
-            msg = "🟢 *Tracker started — baseline snapshot*\n\n" + msg
-        send_telegram(msg)
+    if first_run:
+        send_telegram(build_activation_message(results))
+    elif changes:
+        send_telegram(build_alert_message(changes))
     else:
         print("No significant change — skipping Telegram send.")
 

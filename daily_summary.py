@@ -14,13 +14,22 @@ from pathlib import Path
 from sources import fetch_all
 from tracker import (
     CAIRO,
+    GOOGLE_CHART_URL,
+    arrow,
     fmt_date_time,
-    fmt_delta,
     fmt_time,
     now_cairo,
     pick_primary,
     send_telegram,
 )
+
+
+def fmt_delta(delta: float, base: float | None) -> str:
+    """Arrow + absolute + percentage change."""
+    if base and base > 0:
+        pct = (delta / base) * 100
+        return f"{arrow(delta)} {delta:+.4f} ({pct:+.2f}%)"
+    return f"{arrow(delta)} {delta:+.4f}"
 
 HISTORY_FILE = Path(__file__).parent / "history.json"
 
@@ -109,9 +118,31 @@ def main() -> int:
             lines.append("")
             lines.append(f"📊 *Spread (Market − Official)*: `{(m - o):+.4f}` EGP")
 
+    # Cross-source min / max / avg today
+    today_prices = [pick_primary(r) for r in results if not r["error"] and pick_primary(r)]
+    if today_prices:
+        lo, hi = min(today_prices), max(today_prices)
+        avg = sum(today_prices) / len(today_prices)
+        lines.append(f"📉 *Range across sources*: `{lo:.4f}` – `{hi:.4f}` (avg `{avg:.4f}`)")
+
+    # 7-day trend (if we have enough history)
+    week_ago_dates = sorted(d for d in history.keys() if d < today)[-7:]
+    if len(week_ago_dates) >= 2:
+        first = week_ago_dates[0]
+        # Use CBE as the canonical reference if available, else first source
+        ref_name = "CBE (official)" if "CBE (official)" in history[first] else next(iter(history[first]), None)
+        if ref_name and ref_name in snapshot:
+            old_p = history[first][ref_name]["price"]
+            new_p = snapshot[ref_name]["price"]
+            d = new_p - old_p
+            lines.append("")
+            lines.append(f"📅 *7-day trend* (`{ref_name}`): `{old_p:.4f}` → `{new_p:.4f}`  {fmt_delta(d, old_p)}")
+
     if prev_day:
-        lines.append("")
-        lines.append(f"_Comparison vs {prev_day}_")
+        lines.append(f"_Comparison above vs {prev_day}_")
+
+    lines.append("")
+    lines.append(f"📈 [View chart on Google Finance]({GOOGLE_CHART_URL})")
 
     send_telegram("\n".join(lines))
 

@@ -6,12 +6,12 @@
       "sell": 51.8886
     },
     "CIB": {
-      "price": 51.82,
-      "buy": 51.77,
-      "sell": 51.87
+      "price": 51.77,
+      "buy": 51.72,
+      "sell": 51.82
     },
     "Yahoo (market)": {
-      "price": 51.75,
+      "price": 51.72,
       "buy": null,
       "sell": null
     },

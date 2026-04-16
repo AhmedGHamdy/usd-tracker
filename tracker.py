@@ -32,6 +32,10 @@ CAIRO = ZoneInfo("Africa/Cairo")
 # Override by setting env var MIN_CHANGE (e.g. 0.10 for 10 piasters).
 MIN_CHANGE = float(os.environ.get("MIN_CHANGE", "0.05"))
 
+# Only this source triggers alerts. Daily summary still shows all 5.
+# Yahoo market rate matches what Google / Morningstar display.
+PRIMARY_SOURCE = os.environ.get("PRIMARY_SOURCE", "Yahoo (market)")
+
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
 
@@ -83,33 +87,9 @@ def arrow(delta: float) -> str:
 GOOGLE_CHART_URL = "https://www.google.com/finance/quote/USD-EGP"
 
 
-def build_alert_message(changes: list[tuple]) -> str:
-    """Ultra-minimal alert — just the new price, one line per changed source.
-    If a single source changed → a single number like: 51.82
-    If multiple changed → one number per line.
-    """
-    return "\n".join(f"{curr_p:.2f}" for _, _, curr_p in changes)
-
-
-def build_activation_message(results: list[dict]) -> str:
-    """First-run confirmation — sent once so you know the bot is live."""
-    ts = now_cairo()
-    lines = [
-        "✅ *Tracker is active*",
-        f"_Monitoring USD/EGP every 15 min · {fmt_date_time(ts)} (Cairo)_",
-        "",
-        "You'll get a short alert whenever any of these prices changes:",
-    ]
-    for r in results:
-        if r["error"]:
-            lines.append(f"• _{r['source']}_ ⚠️")
-            continue
-        p = pick_primary(r)
-        if p is not None:
-            lines.append(f"• _{r['source']}_: `{p:.4f}`")
-    lines.append("")
-    lines.append(f"📈 [View chart on Google Finance]({GOOGLE_CHART_URL})")
-    return "\n".join(lines)
+def build_price_message(price: float) -> str:
+    """The one and only alert format the user wants."""
+    return f"1 USD equals\n{price:.2f} EGP"
 
 
 # ---------- Telegram ----------
@@ -153,18 +133,15 @@ def main() -> int:
     print(f"Running at {fmt_date_time(cairo_now)} (Cairo)")
     results = fetch_all()
 
-    # Detect significant changes
-    changes: list[tuple] = []
+    # Update state for ALL sources (daily summary needs this data).
     new_rates = {}
     for r in results:
         name = r["source"]
         curr_price = pick_primary(r)
         if curr_price is None:
-            # Don't overwrite last known good value on failure
             if name in prev_rates:
                 new_rates[name] = prev_rates[name]
             continue
-
         new_rates[name] = {
             "price": curr_price,
             "buy": r.get("buy"),
@@ -172,21 +149,22 @@ def main() -> int:
             "ts": now_cairo().isoformat(),
         }
 
-        prev_price = prev_rates.get(name, {}).get("price")
-        if prev_price is None:
-            # First observation — don't count as change
-            continue
-        if abs(curr_price - prev_price) >= MIN_CHANGE:
-            changes.append((name, prev_price, curr_price))
-
-    # Compose and send
+    # Alert only on the primary source.
+    primary_curr = new_rates.get(PRIMARY_SOURCE, {}).get("price")
+    primary_prev = prev_rates.get(PRIMARY_SOURCE, {}).get("price")
     first_run = not prev_rates
-    if first_run:
-        send_telegram(build_activation_message(results))
-    elif changes:
-        send_telegram(build_alert_message(changes))
+
+    if primary_curr is None:
+        print(f"Primary source '{PRIMARY_SOURCE}' unavailable — no alert.")
+    elif first_run:
+        # First-ever run: confirm bot is live with the current price.
+        send_telegram(build_price_message(primary_curr))
+    elif primary_prev is None:
+        print(f"No previous price for '{PRIMARY_SOURCE}' — baselining only.")
+    elif abs(primary_curr - primary_prev) >= MIN_CHANGE:
+        send_telegram(build_price_message(primary_curr))
     else:
-        print("No significant change — skipping Telegram send.")
+        print(f"No significant change on '{PRIMARY_SOURCE}' — skipping Telegram send.")
 
     # Persist state
     save_state({

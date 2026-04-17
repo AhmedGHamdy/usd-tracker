@@ -27,30 +27,15 @@
     }
   },
   "2026-04-17": {
-    "CBE (official)": {
-      "price": 51.8199,
-      "buy": 51.7511,
-      "sell": 51.8886
-    },
     "CIB": {
       "price": 51.77,
       "buy": 51.72,
       "sell": 51.82
     },
-    "Yahoo (market)": {
-      "price": 51.77,
-      "buy": null,
-      "sell": null
-    },
-    "Forex (open.er-api)": {
-      "price": 51.8101,
-      "buy": null,
-      "sell": null
-    },
-    "Forex (currency-api)": {
-      "price": 51.7667,
-      "buy": null,
-      "sell": null
+    "CBE": {
+      "price": 51.8199,
+      "buy": 51.7511,
+      "sell": 51.8886
     }
   }
 }

@@ -32,9 +32,8 @@ CAIRO = ZoneInfo("Africa/Cairo")
 # Override by setting env var MIN_CHANGE (e.g. 0.10 for 10 piasters).
 MIN_CHANGE = float(os.environ.get("MIN_CHANGE", "0.05"))
 
-# Only this source triggers alerts. Daily summary still shows all 5.
-# Yahoo market rate matches what Google / Morningstar display.
-PRIMARY_SOURCE = os.environ.get("PRIMARY_SOURCE", "Yahoo (market)")
+# Only this source triggers alerts. Daily summary still shows all sources.
+PRIMARY_SOURCE = os.environ.get("PRIMARY_SOURCE", "CIB")
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
@@ -84,12 +83,9 @@ def arrow(delta: float) -> str:
 
 # ---------- Message building ----------
 
-GOOGLE_CHART_URL = "https://www.google.com/finance/quote/USD-EGP"
-
-
 def build_price_message(price: float) -> str:
-    """The one and only alert format the user wants."""
-    return f"1 USD equals\n{price:.2f} EGP"
+    """One line. That's it."""
+    return f"1 USD equals {price:.2f} EGP"
 
 
 # ---------- Telegram ----------

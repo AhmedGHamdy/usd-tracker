@@ -22,6 +22,25 @@ for _stream in (sys.stdout, sys.stderr):
     except Exception:
         pass
 
+
+def _load_dotenv() -> None:
+    """Minimal .env loader. Reads KEY=VALUE lines and populates os.environ
+    (without overwriting values already set — GitHub Actions secrets win)."""
+    env_path = Path(__file__).parent / ".env"
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        os.environ.setdefault(key, value)
+
+
+_load_dotenv()
+
 from sources import fetch_all
 
 # ---------- Config ----------
@@ -74,11 +93,13 @@ def pick_primary(r: dict) -> float | None:
 
 
 def arrow(delta: float) -> str:
+    """Green-up / red-down arrows. These render as colored arrow-on-chart
+    glyphs on phones, matching Western finance convention."""
     if delta > 0:
-        return "🔺"
+        return "📈"
     if delta < 0:
-        return "🔻"
-    return "➖"
+        return "📉"
+    return "➡️"
 
 
 # ---------- Message building ----------

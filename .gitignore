@@ -5,3 +5,7 @@ venv/
 .env
 .env.local
 .DS_Store
+
+# Local-runner artifacts
+tracker.log
+daily.log

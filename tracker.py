@@ -93,14 +93,12 @@ def pick_primary(r: dict) -> float | None:
 
 
 def arrow(delta: float) -> str:
-    """Green/red triangle markers. A native green-triangle emoji doesn't
-    exist (🔺 is always red per Unicode), so we pair a colored square
-    with a plain triangle character: 🟩▲ up, 🟥▼ down, ⬜— flat."""
+    """Chart-arrow glyphs — user prefers these: 📈 up, 📉 down, — flat."""
     if delta > 0:
-        return "🟩▲"
+        return "📈"
     if delta < 0:
-        return "🟥▼"
-    return "⬜—"
+        return "📉"
+    return "—"
 
 
 # ---------- Message building ----------

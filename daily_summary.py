@@ -67,6 +67,8 @@ def main() -> int:
         f"📅 *USD/EGP — {label}*",
         f"_{ts.strftime('%A, %d %b %Y')} at {fmt_time(ts)} (Cairo)_",
         "",
+        "💡 *How much is 1 US Dollar worth in Egyptian Pounds today?*",
+        "",
     ]
 
     for r in results:
@@ -105,6 +107,17 @@ def main() -> int:
     if prev_day:
         lines.append(f"_vs {prev_day}_")
 
+    # ---------- Plain-English guide ----------
+    lines.append("")
+    lines.append("ℹ️ *Quick guide — what each line means:*")
+    lines.append("• *Buy* = the price the bank pays you for $1 (if you sell dollars).")
+    lines.append("• *Sell* = the price the bank charges you for $1 (if you buy dollars).")
+    lines.append("• *CIB* = Commercial International Bank — a private Egyptian bank.")
+    lines.append("• *CBE* = Central Bank of Egypt — the official government rate.")
+    lines.append("• *Spread* = gap between CIB's rate and CBE's rate. A big gap usually means the market disagrees with the official rate.")
+    lines.append("• *7-day trend* = how the rate moved compared to one week ago.")
+    lines.append("• 📈 = dollar got *more expensive* (pound got weaker).")
+    lines.append("• 📉 = dollar got *cheaper* (pound got stronger).")
     lines.append("")
     lines.append(f"📈 [Google Finance chart]({CHART_URL})")
 

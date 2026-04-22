@@ -93,13 +93,12 @@ def pick_primary(r: dict) -> float | None:
 
 
 def arrow(delta: float) -> str:
-    """Green-up / red-down arrows. These render as colored arrow-on-chart
-    glyphs on phones, matching Western finance convention."""
+    """User prefers chart-arrow glyphs: 📈 up, 📉 down, — flat."""
     if delta > 0:
         return "📈"
     if delta < 0:
         return "📉"
-    return "➡️"
+    return "—"
 
 
 # ---------- Message building ----------
